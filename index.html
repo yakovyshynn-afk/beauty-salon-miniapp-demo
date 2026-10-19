@@ -1,0 +1,902 @@
+<!doctype html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>Онлайн-запис у салон: демо-прототип</title>
+<meta name="description" content="Клікабельний прототип Telegram Mini App для салону краси на демо-даних: каталог, майстри, запис, кабінет, повідомлення бота.">
+<meta property="og:title" content="Онлайн-запис у салон: демо-прототип">
+<meta property="og:description" content="Клікабельний прототип Telegram Mini App для салону краси на демо-даних.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='16' fill='%237C3F2F'/%3E%3Cpath d='M16 7l2 6 6 2-6 2-2 6-2-6-6-2 6-2z' fill='%23fff'/%3E%3C/svg%3E">
+
+<!-- Telegram Web Apps SDK (офіційний скрипт з core.telegram.org/bots/webapps). Якщо недоступний, застосунок працює в запасному режимі -->
+<script src="https://telegram.org/js/telegram-web-app.js?64"></script>
+
+<!-- Шрифти: Cormorant Garamond (заголовки, ціни; Cormorant Infant не підходить: його кирилиця стилізована, п/т читаються як n/m) + Jost (текст). Кирилиця перевірена. Запасні шрифти в --f-* -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500&family=Jost:wght@400&display=swap">
+
+<style>
+/* ===== БЛОК: токени (бренд клієнта поки немає: змінити лише ці змінні) ===== */
+:root{
+  --bg:#F3EEE7; --surface:#EAE3D9; --ink:#1F1B17;
+  --accent:#7C3F2F; --accent-ink:#FFFFFF;
+  --t2:color-mix(in srgb,var(--ink) 74%,var(--bg));
+  --t3:color-mix(in srgb,var(--ink) 64%,var(--bg));
+  --hair:color-mix(in srgb,var(--ink) 20%,transparent);
+  --danger:#9A2F25;
+  --f-display:'Cormorant Garamond',Georgia,serif;
+  --f-body:'Jost',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+  --ease:cubic-bezier(.22,1,.36,1);
+  --r-s:12px; --r-m:20px; --pill:999px;
+  --gut:20px;
+  color-scheme:light;
+  --safe-b:max(env(safe-area-inset-bottom,0px),var(--tg-safe-area-inset-bottom,0px));
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#151210; --surface:#211C19; --ink:#EFE9E1;
+  --accent:#D08A75; --accent-ink:#1A110D; --danger:#E58A7E;
+}
+
+/* ===== БЛОК: база ===== */
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;background:var(--bg)}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 17px/1.5 var(--f-body);-webkit-font-smoothing:antialiased;font-variant-numeric:lining-nums;overflow-x:hidden}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer;background:none;border:0;padding:0;text-align:left;-webkit-tap-highlight-color:transparent}
+button:disabled{cursor:not-allowed}
+h1,h2,h3,p{margin:0}
+h1,h2,h3{font-family:var(--f-display);font-weight:500;hyphens:none;text-wrap:balance}
+h1{font-size:clamp(2.3rem,11vw,3rem);line-height:.95;letter-spacing:-.03em}
+h2{font-size:1.9rem;line-height:1;letter-spacing:-.025em}
+h3{font-size:1.5rem;line-height:1.05;letter-spacing:-.02em}
+p{text-wrap:pretty;max-width:56ch}
+dl{margin:0}
+main h1{margin:0 0 22px}
+.lead{margin:-6px 0 24px;color:var(--t2)}
+.mt8{margin-top:8px}.mt10{margin-top:10px}.mt16{margin-top:16px}.mt20{margin-top:20px}
+.ns{padding:20px}
+:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+main:focus,main:focus-visible{outline:0}
+.ico{width:22px;height:22px;flex:none}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.t2{color:var(--t2)} .t3{color:var(--t3)}
+.small{font-size:.875rem;line-height:1.4}
+.label{font-size:12px;line-height:1.8;text-transform:uppercase;letter-spacing:.18em;color:var(--t2)}
+
+/* ===== БЛОК: каркас ===== */
+#app{max-width:480px;margin:0 auto;min-height:100dvh;position:relative}
+.top{display:flex;align-items:center;gap:12px;padding:14px var(--gut) 6px;min-height:60px}
+.top .brand{font:500 1.5rem/1 var(--f-display);letter-spacing:-.02em;flex:1}
+.top .ttl{font:500 1.35rem/1.05 var(--f-display);letter-spacing:-.02em;flex:1;text-wrap:balance}
+.iconbtn{width:44px;height:44px;margin-left:-10px;border-radius:var(--pill);display:grid;place-items:center}
+.iconbtn:active{background:var(--surface)}
+main{padding:8px var(--gut) calc(112px + var(--safe-b));outline:0}
+main.flow{padding-bottom:calc(150px + var(--safe-b))}
+section+section{margin-top:40px}
+
+/* ===== БЛОК: чіпи, кнопки ===== */
+.chip{display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:0 16px;border-radius:var(--pill);box-shadow:inset 0 0 0 1px var(--hair);font-size:.9375rem;white-space:nowrap;transition:background 320ms var(--ease),color 320ms var(--ease)}
+.chip.sm{min-height:36px;padding:0 12px;font-size:.875rem}
+.chip.on{background:var(--ink);color:var(--bg);box-shadow:none}
+.chip.demo{min-height:36px;padding:0 12px;font-size:.8125rem;background:var(--surface);box-shadow:none;color:var(--t2)}
+.btn,.btn-line{position:relative;overflow:hidden;display:inline-flex;align-items:center;justify-content:center;gap:10px;min-height:52px;padding:0 28px;border-radius:var(--pill);text-align:center;font-size:1rem;isolation:isolate}
+.btn{background:var(--accent);color:var(--accent-ink)}
+.btn::before{content:"";position:absolute;inset:0;background:var(--ink);transform:scaleX(0);transform-origin:left;transition:transform 500ms var(--ease);z-index:-1}
+.btn>span{transition:color 320ms var(--ease)}
+.btn:hover:not(:disabled)::before,.btn:active:not(:disabled)::before{transform:scaleX(1)}
+.btn:hover:not(:disabled)>span,.btn:active:not(:disabled)>span{color:var(--bg)}
+.btn-line{box-shadow:inset 0 0 0 1px var(--hair);transition:background 320ms var(--ease)}
+.btn-line:hover:not(:disabled){background:var(--surface)}
+.btn.block,.btn-line.block{width:100%}
+.btn:disabled,.btn-line:disabled{opacity:.45}
+.btn-line.danger{color:var(--danger)}
+.is-busy{pointer-events:none}
+.is-busy::after{content:"";width:16px;height:16px;border-radius:50%;border:2px solid currentColor;border-right-color:transparent;animation:spin 800ms var(--ease) infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.cta-note{display:block;margin-top:10px;font-size:.8125rem;line-height:1.35;color:var(--t2)}
+
+/* ===== БЛОК: екран «Послуги» ===== */
+.hero{padding:16px 0 8px}
+.hero h1{margin:0}
+.hero p{margin:14px 0 22px;color:var(--t2)}
+.cats{display:flex;gap:8px;overflow-x:auto;margin:28px calc(var(--gut) * -1) 28px;padding:4px var(--gut);scrollbar-width:none}
+.cats::-webkit-scrollbar{display:none}
+.cat-h{margin:0 0 14px}
+.grp{background:var(--surface);border-radius:var(--r-m);overflow:hidden}
+.svc{display:flex;align-items:flex-start;gap:14px;width:100%;padding:16px 18px;min-height:72px;transition:background 320ms var(--ease)}
+.svc+.svc{box-shadow:inset 0 1px 0 var(--hair)}
+.svc:hover,.svc:active{background:color-mix(in srgb,var(--ink) 5%,transparent)}
+.svc .main{flex:1;min-width:0;display:block}
+.svc .name{display:block;font-size:1.0625rem;line-height:1.25}
+.svc .inc{display:block;margin-top:4px;font-size:.875rem;line-height:1.35;color:var(--t3)}
+.svc .meta{display:block;margin-top:6px;font-size:.8125rem;color:var(--t2)}
+.svc .price{font:500 1.4rem/1 var(--f-display);letter-spacing:-.01em;white-space:nowrap;text-align:right}
+.svc .price small{display:block;margin-bottom:2px;font:400 .75rem/1 var(--f-body);color:var(--t2)}
+.fine{margin-top:32px;font-size:.8125rem;line-height:1.45;color:var(--t3)}
+
+/* ===== БЛОК: майстри ===== */
+.ava{width:56px;height:56px;border-radius:50%;background:var(--surface);display:grid;place-items:center;font:500 1.35rem/1 var(--f-display);color:var(--t2);flex:none;box-shadow:inset 0 0 0 1px var(--hair)}
+.ava.xl{width:88px;height:88px;font-size:2rem}
+.mcard{display:block;width:100%;background:var(--surface);border-radius:var(--r-m);padding:18px;transition:transform 620ms var(--ease)}
+.mcard+.mcard{margin-top:14px}
+.mcard:active{transform:scale(.99)}
+.mhead{display:flex;gap:14px;align-items:center}
+.mhead.prof{margin:6px 0 20px}
+.mhead.prof h1{font-size:2.2rem;margin:0}
+.mhead .nm{font:500 1.5rem/1 var(--f-display);letter-spacing:-.02em}
+.rate{display:inline-flex;align-items:center;gap:5px;font-size:.9375rem}
+.rate .ico{width:16px;height:16px}
+.wins{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.port{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.tile{aspect-ratio:4/3;border-radius:var(--r-s);background:repeating-linear-gradient(135deg,var(--surface) 0 10px,color-mix(in srgb,var(--surface) 90%,var(--ink)) 10px 11px);display:flex;align-items:flex-end;padding:10px;font-size:.8125rem;color:var(--t2)}
+.week{background:var(--surface);border-radius:var(--r-m);padding:6px 18px}
+.week .day{padding:14px 0}
+.week .day+.day{box-shadow:inset 0 1px 0 var(--hair)}
+.week .dl{font-size:.875rem;color:var(--t2)}
+
+/* ===== БЛОК: запис ===== */
+.prog{display:flex;gap:6px;margin:6px 0 10px}
+.prog i{flex:1;height:3px;border-radius:2px;background:var(--hair);transition:background 500ms var(--ease)}
+.prog i.on{background:var(--ink)}
+.step-l{font-size:.875rem;color:var(--t2);margin-bottom:18px}
+.picks{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 22px}
+.opt{display:flex;align-items:center;gap:14px;width:100%;padding:16px 18px;border-radius:var(--r-m);background:var(--surface);min-height:72px;transition:transform 620ms var(--ease)}
+.opt+.opt{margin-top:12px}
+.opt:active{transform:scale(.99)}
+.opt .grow{flex:1;min-width:0}
+.opt .ot{display:block;font-size:1.0625rem}
+.opt .os{display:block;font-size:.875rem;color:var(--t2);margin-top:2px}
+.strip{display:flex;gap:8px;overflow-x:auto;margin:0 calc(var(--gut) * -1) 22px;padding:2px var(--gut) 6px;scroll-snap-type:x proximity;scroll-padding-left:var(--gut);scrollbar-width:none}
+.strip::-webkit-scrollbar{display:none}
+.dbtn{flex:none;width:58px;min-height:76px;border-radius:var(--r-m);background:var(--surface);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;scroll-snap-align:start;transition:background 320ms var(--ease),color 320ms var(--ease)}
+.dbtn b{font:500 1.6rem/1 var(--f-display)}
+.dbtn span{font-size:.75rem;text-transform:uppercase;letter-spacing:.12em;color:var(--t2)}
+.dbtn[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+.dbtn[aria-pressed="true"] span{color:var(--bg)}
+.dbtn:disabled{opacity:.4}
+.times{display:grid;grid-template-columns:repeat(auto-fill,minmax(78px,1fr));gap:8px}
+.times .chip{justify-content:center;padding:0}
+.times .sk{height:48px}
+.stack{display:grid;gap:10px;margin-top:28px}
+.banner.mb{margin-bottom:10px}
+.sum{background:var(--surface);border-radius:var(--r-m);padding:6px 18px}
+.sum div{display:flex;justify-content:space-between;gap:16px;padding:12px 0}
+.sum div+div{box-shadow:inset 0 1px 0 var(--hair)}
+.sum dt{color:var(--t2);font-size:.9375rem}
+.sum dd{margin:0;text-align:right}
+form{margin-top:28px;display:grid;gap:18px}
+.fld label{display:block;font-size:.875rem;color:var(--t2);margin-bottom:6px}
+.fld input[type=text],.fld input[type=tel]{width:100%;min-height:52px;padding:0 16px;border-radius:var(--r-s);border:0;background:var(--surface);font-size:1rem}
+.fld input[aria-invalid="true"]{box-shadow:inset 0 0 0 1.5px var(--danger)}
+.err{min-height:0;margin-top:6px;font-size:.8125rem;color:var(--danger)}
+.err:empty{display:none}
+.consent{display:flex;gap:12px;align-items:flex-start;font-size:.875rem;line-height:1.4}
+.consent input{width:24px;height:24px;margin:0;flex:none;accent-color:var(--accent)}
+.consent label{padding-top:2px}
+.lnk{text-decoration:underline;text-underline-offset:3px;color:inherit;display:inline;min-height:0}
+.cta-bar{position:fixed;left:0;right:0;bottom:0;z-index:5;background:var(--bg);box-shadow:0 -1px 0 var(--hair)}
+.cta-in{max-width:480px;margin:0 auto;padding:12px var(--gut) calc(12px + var(--safe-b))}
+.banner{display:flex;gap:10px;align-items:flex-start;padding:14px 16px;border-radius:var(--r-s);background:var(--surface);font-size:.875rem;line-height:1.4}
+.banner .ico{width:20px;height:20px;margin-top:1px}
+.banner.bad{box-shadow:inset 0 0 0 1.5px var(--danger)}
+
+/* ===== БЛОК: кабінет ===== */
+.loy{background:var(--surface);border-radius:var(--r-m);padding:20px 18px}
+.loy .st{font:500 2.4rem/1 var(--f-display);letter-spacing:-.03em;margin:4px 0 16px}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px}
+.stats b{display:block;font:500 1.8rem/1 var(--f-display)}
+.stats span{font-size:.8125rem;color:var(--t2)}
+progress{width:100%;height:4px;appearance:none;-webkit-appearance:none;border:0;border-radius:2px;background:var(--hair);display:block}
+progress::-webkit-progress-bar{background:var(--hair);border-radius:2px}
+progress::-webkit-progress-value{background:var(--ink);border-radius:2px}
+progress::-moz-progress-bar{background:var(--ink);border-radius:2px}
+.seg{display:flex;background:var(--surface);border-radius:var(--pill);padding:4px;margin:28px 0 16px}
+.seg button{flex:1;min-height:44px;text-align:center;border-radius:var(--pill);font-size:.9375rem;transition:background 320ms var(--ease),color 320ms var(--ease)}
+.seg button[aria-selected="true"]{background:var(--ink);color:var(--bg)}
+.rule{font-size:.8125rem;color:var(--t2);margin-bottom:14px}
+.visit{background:var(--surface);border-radius:var(--r-m);padding:18px}
+.visit+.visit{margin-top:14px}
+.visit .when{font:500 1.7rem/1 var(--f-display);letter-spacing:-.02em}
+.visit .tag{font-family:var(--f-body);display:inline-block;margin-left:8px;font-size:.75rem;letter-spacing:.04em;color:var(--t2);vertical-align:middle}
+.visit .what{margin-top:10px;font-size:1.0625rem}
+.visit .who{font-size:.9375rem;color:var(--t2)}
+.visit .acts{display:flex;gap:10px;margin-top:16px;flex-wrap:wrap}
+.visit .acts>*{flex:1 1 130px;padding:0 14px}
+.lock{display:flex;gap:10px;margin-top:14px;font-size:.8125rem;line-height:1.4;color:var(--t2)}
+.lock .ico{width:18px;height:18px}
+.empty{padding:36px 0;text-align:left}
+.empty p{margin:10px 0 22px;color:var(--t2)}
+
+/* ===== БЛОК: макет повідомлень бота ===== */
+.chat{background:var(--surface);border-radius:var(--r-m);padding:18px}
+.chat-h{display:flex;gap:12px;align-items:center;margin-bottom:16px}
+.chat-h .ava{width:44px;height:44px;font-size:1.1rem}
+.bub{background:var(--bg);border-radius:6px 20px 20px 20px;padding:14px 16px;font-size:.9375rem;line-height:1.45}
+.bub b{font-weight:400;color:var(--ink)}
+.bub p{max-width:none}
+.bub p+p{margin-top:8px}
+.bub-when{font-size:.75rem;color:var(--t3);margin:8px 4px 0}
+.kb{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.kb span{flex:1 1 auto;min-height:40px;padding:0 14px;display:grid;place-items:center;border-radius:var(--r-s);background:var(--bg);font-size:.875rem;text-align:center}
+.kb.stars span{flex:1 1 40px;padding:0}
+.msg+.msg{margin-top:30px}
+.mh{margin-bottom:10px}
+
+/* ===== БЛОК: нижня навігація, сповіщення, діалог ===== */
+.tabs{position:fixed;left:0;right:0;bottom:0;z-index:6;background:var(--bg);box-shadow:0 -1px 0 var(--hair);padding-bottom:var(--safe-b)}
+.tabs-in{max-width:480px;margin:0 auto;display:grid;grid-template-columns:repeat(4,1fr)}
+.tabs[hidden]{display:none}
+.tab{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-height:64px;padding:6px 2px;font-size:.75rem;color:var(--t2);text-align:center;transition:color 320ms var(--ease)}
+.tab[aria-current="page"]{color:var(--ink)}
+.tab[aria-current="page"] .ico{stroke-width:2.1}
+#toast{position:fixed;left:50%;bottom:calc(88px + var(--safe-b));transform:translate(-50%,24px);opacity:0;pointer-events:none;z-index:20;max-width:min(440px,calc(100vw - 32px));background:var(--ink);color:var(--bg);padding:14px 20px;border-radius:var(--pill);font-size:.9375rem;transition:opacity 500ms var(--ease),transform 500ms var(--ease)}
+#toast.show{opacity:1;transform:translate(-50%,0)}
+dialog{border:0;padding:0;background:var(--bg);color:var(--ink);width:100%;max-width:480px;margin:auto auto 0;border-radius:28px 28px 0 0;max-height:88dvh;overflow:auto}
+dialog::backdrop{background:rgba(20,16,12,.55)}
+.sheet{padding:22px var(--gut) calc(24px + var(--safe-b))}
+.sheet h2{margin-bottom:12px}
+.sheet p+p{margin-top:10px}
+.sheet .row{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}
+.sheet .row>*{flex:1 1 140px}
+.sheet .grp-t{margin:22px 0 8px}
+.sheet .tgl{display:flex;gap:12px;align-items:center;min-height:44px;font-size:.9375rem}
+.sheet .tgl input{width:24px;height:24px;accent-color:var(--accent)}
+
+/* ===== БЛОК: скелетони, помилка, анімація входу ===== */
+.sk{border-radius:var(--r-m);background:var(--surface);height:76px;animation:pulse 1400ms var(--ease) infinite alternate}
+.sk+.sk{margin-top:12px}
+.sk.t{height:40px;width:70%;margin-bottom:20px}
+@keyframes pulse{from{opacity:.55}to{opacity:1}}
+.fail{padding:32px 0}
+.fail p{margin:10px 0 22px;color:var(--t2)}
+.rise{opacity:0;transform:translateY(28px);filter:blur(14px)}
+.is-in .rise{opacity:1;transform:none;filter:blur(0);transition:opacity 900ms var(--ease) var(--d,0ms),transform 900ms var(--ease) var(--d,0ms),filter 900ms var(--ease) var(--d,0ms)}
+/* font-шорткат скидає font-variant, тому цифри в шрифті заголовків задаємо явно */
+.brand,.ttl,.price,.ava,.nm,.dbtn b,.stats b,.st,.when{font-variant-numeric:lining-nums}
+@media (prefers-reduced-motion:reduce){
+  .rise{opacity:1;transform:none;filter:none}
+  *,*::before,*::after{transition-duration:.01ms !important;animation-duration:.01ms !important}
+}
+@media (min-width:481px){ body{background:color-mix(in srgb,var(--bg) 92%,var(--ink))} #app{background:var(--bg)} }
+</style>
+</head>
+<body>
+<!-- ===== БЛОК: каркас сторінки ===== -->
+<div id="app">
+  <header id="top" class="top"></header>
+  <main id="view" tabindex="-1"></main>
+  <nav id="tabs" class="tabs" aria-label="Розділи застосунку"><div class="tabs-in" id="tabsIn"></div></nav>
+</div>
+<div id="toast" role="status" aria-live="polite"></div>
+<dialog id="sheet" aria-label="Діалог"><div class="sheet" id="sheetBody"></div></dialog>
+<noscript><p class="ns">Для роботи прототипу потрібен JavaScript.</p></noscript>
+
+<script>
+'use strict';
+/* ===== БЛОК: утиліти ===== */
+const $ = (s, r = document) => r.querySelector(s);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const pad = n => String(n).padStart(2, '0');
+const WD = ['нд','пн','вт','ср','чт','пт','сб'];
+const MO = ['січня','лютого','березня','квітня','травня','червня','липня','серпня','вересня','жовтня','листопада','грудня'];
+const money = n => n.toLocaleString('uk-UA').replace(/ /g, ' ') + ' ₴';
+const startOfDay = ms => { const d = new Date(ms); d.setHours(0,0,0,0); return d.getTime(); };
+const addDays = (ms, n) => { const d = new Date(ms); d.setDate(d.getDate() + n); return d.getTime(); };
+const dkey = ms => { const d = new Date(ms); return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); };
+const hm = ms => { const d = new Date(ms); return pad(d.getHours()) + ':' + pad(d.getMinutes()); };
+const hash = s => { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; };
+const initials = n => n.split(' ').map(w => w[0]).join('').toUpperCase();
+const ICONS = {
+  spark:'<path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 16l.7 2 2 .7-2 .7-.7 2-.7-2-2-.7 2-.7z"/>',
+  user:'<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.5-6 8-6s8 2 8 6"/>',
+  cal:'<rect x="3" y="4.5" width="18" height="16.5" rx="3"/><path d="M8 2.5v4M16 2.5v4M3 10h18"/>',
+  bell:'<path d="M6 9a6 6 0 0 1 12 0c0 6 2.5 7.5 2.5 7.5h-17S6 15 6 9z"/><path d="M10 20a2 2 0 0 0 4 0"/>',
+  back:'<path d="M19 12H5M11 5l-7 7 7 7"/>',
+  chev:'<path d="M9 5l7 7-7 7"/>',
+  star:'<path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z" fill="currentColor"/>',
+  lock:'<rect x="4.5" y="10.5" width="15" height="10" rx="2.5"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/>',
+  alert:'<circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16.5v.01"/>'
+};
+const ico = (n, c = '') => `<svg class="ico ${c}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[n]}</svg>`;
+
+/* ===== БЛОК: шар даних api (єдине місце, яке замінюється на реальні запити до CRM) ===== */
+/* Демо-годинник: «зараз» зафіксовано, змінюється лише з демо-панелі. */
+const DEMO = { base: new Date(2026, 9, 19, 12, 0).getTime(), offset: 0, failNext: false };
+const now = () => DEMO.base + DEMO.offset;
+const HOURS_LIMIT = 24;            /* правило з ТЗ: перенос/скасування не пізніше ніж за 24 години */
+const OPEN = 600, CLOSE = 1200, STEP = 30;   /* демо-графік 10:00-20:00 */
+class ApiError extends Error { constructor(code, msg) { super(msg); this.code = code; } }
+
+const CATS = [
+  { id:'hair',  name:'Волосся' },
+  { id:'nails', name:'Нігті' },
+  { id:'brows', name:'Брови та вії' },
+  { id:'care',  name:'Догляд' }
+];
+const SERVICES = [
+  { id:'cut',   cat:'hair',  name:'Стрижка жіноча', min:60, from:700, inc:'Консультація, миття голови, стрижка, укладання' },
+  { id:'style', cat:'hair',  name:'Укладання', min:45, from:500, inc:'Миття голови, укладання на обраний образ' },
+  { id:'color', cat:'hair',  name:'Фарбування в один тон', min:150, from:1800, inc:'Консультація, підбір відтінку, нанесення, миття, укладання', prepay:{ mode:'required', pct:30 } },
+  { id:'ritual',cat:'hair',  name:'Доглядовий ритуал для волосся', min:40, from:900, inc:'Миття, маска за типом волосся, масаж голови, укладання' },
+  { id:'gel',   cat:'nails', name:'Манікюр з покриттям гель-лак', min:90, from:800, inc:'Обробка нігтів і кутикули, покриття, догляд за шкірою рук' },
+  { id:'mani',  cat:'nails', name:'Манікюр класичний', min:60, from:450, inc:'Обробка нігтів і кутикули, форма, догляд за шкірою рук' },
+  { id:'pedi',  cat:'nails', name:'Педикюр', min:90, from:900, inc:'Обробка стоп, нігтів і кутикули, догляд за шкірою' },
+  { id:'remove',cat:'nails', name:'Зняття покриття', min:30, from:200, inc:'Акуратне зняття, базовий догляд за нігтями' },
+  { id:'brows', cat:'brows', name:'Корекція і фарбування брів', min:45, from:450, inc:'Консультація, підбір форми, корекція, фарбування' },
+  { id:'lami',  cat:'brows', name:'Ламінування вій', min:75, from:900, inc:'Консультація, процедура, фарбування вій' },
+  { id:'lash',  cat:'brows', name:'Нарощування вій, класика', min:120, from:1100, inc:'Консультація, підбір довжини й вигину, нарощування', prepay:{ mode:'optional', pct:30 } },
+  { id:'fmass', cat:'care',  name:'Розслабляючий масаж обличчя', min:40, from:700, inc:'Консультація, масаж у комфортному для вас темпі' },
+  { id:'paraf', cat:'care',  name:'Догляд за руками з парафіном', min:30, from:350, inc:'Скраб, парафін, зволожувальний крем' }
+];
+const MASTERS = [
+  { id:'olena', name:'Олена К.', role:'Стиліст-колорист', rating:4.9, reviews:128, off:[0,1], services:['cut','style','color','ritual'],
+    bio:'Працює з волоссям різної довжини. Перед роботою обговорює побажання й підбирає варіант разом з вами.', port:['Стрижка','Колір','Укладання','Догляд'] },
+  { id:'maryna', name:'Марина В.', role:'Майстер манікюру', rating:4.8, reviews:96, off:[0,3], services:['gel','mani','remove','paraf'],
+    bio:'Манікюр з покриттям і класичний. Підбирає форму й довжину під ваші звички.', port:['Однотонне покриття','Френч','Мінімал','Класичний'] },
+  { id:'sofiia', name:'Софія Л.', role:'Майстер манікюру й педикюру', rating:4.7, reviews:74, off:[0,2], services:['gel','mani','pedi','remove'],
+    bio:'Манікюр і педикюр. Працює спокійно й без поспіху.', port:['Педикюр','Гель-лак','Класичний','Нюдові відтінки'] },
+  { id:'iryna', name:'Ірина Д.', role:'Майстер брів і вій', rating:4.9, reviews:151, off:[0,6], services:['brows','lami','lash','fmass'],
+    bio:'Брови, вії й розслабляючий масаж обличчя. Перед процедурою проводить консультацію.', port:['Брови','Ламінування','Класика','Масаж'] }
+];
+const mk = (id, serviceId, masterId, d, status, client) => ({ id, serviceId, masterId, start:d.getTime(), status, client: client || { name:'Гість', phone:'' }, deposit:null });
+const SEED_VISITS = () => [
+  mk('v1','gel','maryna', new Date(2026,9,20,10,0), 'confirmed'),
+  mk('v2','brows','iryna', new Date(2026,9,23,15,0), 'confirmed'),
+  mk('p1','cut','olena',  new Date(2026,9,2,11,0),  'confirmed'),
+  mk('p2','pedi','sofiia',new Date(2026,8,14,16,0), 'confirmed')
+];
+const STORE = { visits: SEED_VISITS(), seq: 10 };
+const svcOf = id => SERVICES.find(s => s.id === id);
+const masterOf = id => MASTERS.find(m => m.id === id);
+const prepayAmount = s => s.prepay ? Math.round(s.from * s.prepay.pct / 100) : 0;
+
+/* зайнятість: псевдовипадкова, але детермінована + реальні візити */
+function busySet(mid, dk, exceptId) {
+  const set = new Set();
+  for (let b = 0; b < (CLOSE - OPEN) / STEP; b++) if (hash(mid + dk + b) % 100 < 26) set.add(b);
+  for (const v of STORE.visits) {
+    if (v.masterId !== mid || v.status === 'cancelled' || v.id === exceptId || dkey(v.start) !== dk) continue;
+    const d = new Date(v.start), s = (d.getHours() * 60 + d.getMinutes() - OPEN) / STEP, n = Math.ceil(svcOf(v.serviceId).min / STEP);
+    for (let i = 0; i < n; i++) set.add(s + i);
+  }
+  return set;
+}
+function freeStarts(mid, dayMs, dur, exceptId) {
+  if (masterOf(mid).off.includes(new Date(dayMs).getDay())) return [];
+  const busy = busySet(mid, dkey(dayMs), exceptId), n = Math.ceil(dur / STEP), out = [];
+  for (let m = OPEN; m + dur <= CLOSE; m += STEP) {
+    const b0 = (m - OPEN) / STEP; let ok = true;
+    for (let i = 0; i < n; i++) if (busy.has(b0 + i)) { ok = false; break; }
+    if (!ok) continue;
+    const t = new Date(dayMs); t.setHours(0, 0, 0, 0); t.setMinutes(m);
+    if (t.getTime() > now()) out.push(t.getTime());
+  }
+  return out;
+}
+const mastersFor = serviceId => MASTERS.filter(m => !serviceId || m.services.includes(serviceId));
+function slotsFor(masterId, serviceId, dayMs, exceptId) {
+  const dur = serviceId ? svcOf(serviceId).min : 60, map = new Map();
+  const ids = masterId === 'any' ? mastersFor(serviceId).map(m => m.id) : [masterId];
+  for (const id of ids) for (const t of freeStarts(id, dayMs, dur, exceptId)) { if (!map.has(t)) map.set(t, []); map.get(t).push(id); }
+  return [...map.entries()].sort((a, b) => a[0] - b[0]).map(([start, masterIds]) => ({ start, masterIds }));
+}
+
+const api = {
+  policy: {
+    /* Правило 24 годин. У бойовій версії дублюється на сервері. */
+    changeAllowed(v) { return (v.status === 'confirmed' || v.status === 'pending_payment') && (v.start - now()) >= HOURS_LIMIT * 36e5; }
+  },
+  async _call(fn, ms = 380) {
+    await new Promise(r => setTimeout(r, ms));
+    if (DEMO.failNext) { DEMO.failNext = false; throw new ApiError('NETWORK', 'Немає зв’язку із сервером'); }
+    return fn();
+  },
+  getCategories() { return this._call(() => CATS.slice(), 250); },
+  getServices() { return this._call(() => SERVICES.slice(), 250); },
+  getMasters({ serviceId } = {}) { return this._call(() => mastersFor(serviceId)); },
+  getMaster(id) { return this._call(() => masterOf(id), 200); },
+  getNearestWindows(masterId, serviceId, n = 3) {
+    return this._call(() => {
+      const out = [], today = startOfDay(now());
+      for (let i = 0; i < 14 && out.length < n; i++) for (const s of slotsFor(masterId, serviceId, addDays(today, i))) { out.push(s.start); if (out.length >= n) break; }
+      return out;
+    }, 250);
+  },
+  getWeek(masterId) {
+    return this._call(() => {
+      const today = startOfDay(now()), res = [];
+      for (let i = 0; i < 5; i++) { const d = addDays(today, i); res.push({ day:d, off: masterOf(masterId).off.includes(new Date(d).getDay()), starts: slotsFor(masterId, null, d).map(s => s.start) }); }
+      return res;
+    });
+  },
+  getDays({ masterId, serviceId, exceptId }) {
+    return this._call(() => {
+      const today = startOfDay(now()), res = [];
+      for (let i = 0; i < 14; i++) { const d = addDays(today, i); res.push({ day:d, free: slotsFor(masterId, serviceId, d, exceptId).length }); }
+      return res;
+    });
+  },
+  getSlots({ masterId, serviceId, date, exceptId }) { return this._call(() => slotsFor(masterId, serviceId, date, exceptId), 300); },
+  createBooking({ serviceId, masterId, start, client }) {
+    return this._call(() => {
+      const s = svcOf(serviceId), day = startOfDay(start);
+      const free = slotsFor(masterId, serviceId, day).find(x => x.start === start);
+      if (!free) throw new ApiError('SLOT_TAKEN', 'Цей час щойно зайняли');
+      const mid = free.masterIds[0];
+      const v = { id:'n' + (++STORE.seq), serviceId, masterId:mid, start, status:'confirmed', client,
+        deposit: s.prepay ? { mode:s.prepay.mode, amount:prepayAmount(s), paid:false } : null };
+      if (s.prepay && s.prepay.mode === 'required') v.status = 'pending_payment';
+      STORE.visits.push(v);
+      return { ...v };
+    }, 700);
+  },
+  payDeposit(id) {
+    return this._call(() => {
+      const v = STORE.visits.find(x => x.id === id);
+      if (!v) throw new ApiError('NOT_FOUND', 'Запис не знайдено');
+      v.deposit = { ...v.deposit, paid:true }; v.status = 'confirmed';
+      return { ...v };
+    }, 900);
+  },
+  getVisits() { return this._call(() => STORE.visits.map(v => ({ ...v }))); },
+  getVisit(id) { return this._call(() => ({ ...STORE.visits.find(x => x.id === id) }), 200); },
+  rescheduleVisit(id, { start }) {
+    return this._call(() => {
+      const v = STORE.visits.find(x => x.id === id);
+      if (!v || !this.policy.changeAllowed(v)) throw new ApiError('TOO_LATE', 'Змінити візит уже не можна');
+      const free = slotsFor(v.masterId, v.serviceId, startOfDay(start), id).find(x => x.start === start);
+      if (!free) throw new ApiError('SLOT_TAKEN', 'Цей час щойно зайняли');
+      v.start = start; return { ...v };
+    }, 700);
+  },
+  cancelVisit(id) {
+    return this._call(() => {
+      const v = STORE.visits.find(x => x.id === id);
+      if (!v || !this.policy.changeAllowed(v)) throw new ApiError('TOO_LATE', 'Скасувати візит уже не можна');
+      v.status = 'cancelled'; return { ...v };
+    }, 700);
+  },
+  getLoyalty() { return this._call(() => ({ status:'Срібний', next:'Золотий', visits:7, goal:10, bonus:240, discount:5 }), 250); },
+  getBotPreview() { return this._call(() => ({ service:svcOf('gel'), master:masterOf('maryna'), rated:masterOf('olena') }), 150); }
+};
+
+/* ===== БЛОК: адаптер Telegram (з запасним режимом у браузері) ===== */
+const tg = window.Telegram && window.Telegram.WebApp;
+/* [ПОТРІБНО ПЕРЕВІРИТИ: на реальному пристрої, чи platform поза Telegram дорівнює 'unknown', і чи є initData при запуску з keyboard button] */
+const inTG = !!(tg && (tg.initData || (tg.platform && tg.platform !== 'unknown')));
+const tgv = v => { try { return !!(tg && tg.isVersionAtLeast && tg.isVersionAtLeast(v)); } catch (e) { return false; } };
+const host = {
+  init() {
+    if (!inTG) return;
+    try { tg.ready(); tg.expand(); } catch (e) {}
+    try { tg.onEvent('themeChanged', applyTheme); } catch (e) {}
+    try { if (tgv('6.1')) tg.BackButton.onClick(() => back()); } catch (e) {}
+  },
+  scheme() { if (inTG && tg.colorScheme) return tg.colorScheme; return matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'; },
+  paint() {
+    if (!inTG) return;
+    const bg = getComputedStyle(document.documentElement).getPropertyValue('--bg').trim();
+    try { if (tgv('6.9')) { tg.setHeaderColor(bg); tg.setBackgroundColor(bg); } } catch (e) {}
+    try { if (tgv('7.10')) tg.setBottomBarColor(bg); } catch (e) {}
+  },
+  setBack(show) { try { if (inTG && tgv('6.1')) show ? tg.BackButton.show() : tg.BackButton.hide(); } catch (e) {} },
+  haptic(kind) {
+    try { if (!inTG || !tgv('6.1')) return;
+      if (kind === 'tap') tg.HapticFeedback.selectionChanged(); else tg.HapticFeedback.notificationOccurred(kind);
+    } catch (e) {}
+  },
+  user() { try { return (inTG && tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.first_name) || ''; } catch (e) { return ''; } }
+};
+
+/* ===== БЛОК: стан застосунку та навігація ===== */
+const S = { screen:{ name:'home' }, stack:[], token:0, flow:null, re:null, cabTab:'up', themePref:'auto' };
+const TABS = [  /* реєстр вкладок: майбутній модуль «Магазин» додається сюди + у VIEWS */
+  { id:'home', label:'Послуги', icon:'spark' },
+  { id:'masters', label:'Майстри', icon:'user' },
+  { id:'cabinet', label:'Мої візити', icon:'cal' },
+  { id:'notify', label:'Сповіщення', icon:'bell' }
+];
+const view = $('#view'), topEl = $('#top'), tabsEl = $('#tabs');
+
+function applyTheme() {
+  const sch = S.themePref === 'auto' ? host.scheme() : S.themePref;
+  document.documentElement.dataset.theme = sch;
+  host.paint();
+}
+function toast(msg) {
+  const t = $('#toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove('show'), 3200);
+}
+function go(name, params = {}) { S.stack.push(S.screen); S.screen = { name, ...params }; renderScreen(); }
+function replace(name, params = {}) { S.screen = { name, ...params }; renderScreen(); }
+function switchTab(id) { S.stack = []; S.screen = { name:id }; renderScreen(); }
+function back() {
+  if (S.screen.name === 'book' && S.flow && S.flow.step > S.flow.min) { S.flow.step--; renderScreen(); return; }
+  if (S.stack.length) { S.screen = S.stack.pop(); renderScreen(); return; }
+  if (S.screen.name !== 'home') switchTab('home');
+}
+
+/* ===== БЛОК: дати для інтерфейсу ===== */
+function dayWord(ms) {
+  const diff = Math.round((startOfDay(ms) - startOfDay(now())) / 864e5), d = new Date(ms);
+  if (diff === 0) return 'Сьогодні'; if (diff === 1) return 'Завтра'; return WD[d.getDay()] + ', ' + d.getDate() + ' ' + MO[d.getMonth()].slice(0, 4) + '.';
+}
+const fullDate = ms => { const d = new Date(ms); return WD[d.getDay()] + ', ' + d.getDate() + ' ' + MO[d.getMonth()]; };
+const winLabel = ms => dayWord(ms) + ' ' + hm(ms);
+function leftLabel(ms) {
+  const h = Math.floor(ms / 36e5); if (h < 24) return h + ' год';
+  return Math.floor(h / 24) + ' дн ' + (h % 24) + ' год';
+}
+
+/* ===== БЛОК: реєстр екранів ===== */
+const skeleton = (n = 4) => '<div class="sk t"></div>' + Array.from({ length:n }, () => '<div class="sk"></div>').join('');
+const errorView = () => `<div class="fail rise"><h2>Не вдалося завантажити</h2><p>Перевірте з’єднання й спробуйте ще раз. Ваші дані не втрачено.</p><button class="btn" data-action="retry"><span>Спробувати ще раз</span></button></div>`;
+const VIEWS = {};
+
+async function renderScreen(opts = {}) {
+  const token = ++S.token, sc = S.screen, v = VIEWS[sc.name];
+  view.className = v.flow ? 'flow' : '';
+  if (!opts.quiet) { view.classList.remove('is-in'); view.innerHTML = v.skel ? v.skel(sc) : skeleton(); }
+  chrome();
+  if (!opts.quiet) window.scrollTo(0, 0);
+  try {
+    const html = await v.render(sc);
+    if (token !== S.token) return;
+    view.innerHTML = html;
+    view.querySelectorAll('.rise').forEach((el, i) => el.style.setProperty('--d', Math.min(i * 60, 540) + 'ms'));
+    requestAnimationFrame(() => view.classList.add('is-in'));
+    if (v.after) v.after(sc);
+    if (!opts.quiet) view.focus({ preventScroll:true });
+  } catch (e) {
+    if (token !== S.token) return;
+    view.innerHTML = errorView(); view.classList.add('is-in');
+  }
+}
+function chrome() {
+  const sc = S.screen, v = VIEWS[sc.name], root = !S.stack.length && !!v.tab;
+  topEl.innerHTML = root
+    ? `<span class="brand">Назва салону</span><button class="chip demo" data-action="demo">Демо-дані</button>`
+    : `${inTG ? '' : `<button class="iconbtn" data-action="back" aria-label="Назад">${ico('back')}</button>`}<span class="ttl">${v.title ? v.title(sc) : ''}</span><button class="chip demo" data-action="demo">Демо-дані</button>`;
+  tabsEl.hidden = !v.tab;
+  $('#tabsIn').innerHTML = TABS.map(t => `<button class="tab" data-action="tab" data-id="${t.id}" ${t.id === v.tab ? 'aria-current="page"' : ''}>${ico(t.icon)}<span>${t.label}</span></button>`).join('');
+  host.setBack(!root);
+}
+
+/* --- Послуги --- */
+const svcRow = (s, action, extra = '') => `<button class="svc" data-action="${action}" data-id="${s.id}">
+  <span class="main"><span class="name">${esc(s.name)}</span><span class="inc">${esc(s.inc)}</span>
+  <span class="meta">${s.min} хв${s.prepay ? ' / ' + (s.prepay.mode === 'required' ? 'потрібна передоплата' : 'можлива передоплата') : ''}</span></span>
+  <span class="price"><small>від</small>${money(s.from)}</span></button>`;
+const catGroups = (cats, svcs, action) => cats.map(c => {
+  const list = svcs.filter(s => s.cat === c.id); if (!list.length) return '';
+  return `<section id="cat-${c.id}" class="rise"><h2 class="cat-h">${esc(c.name)}</h2><div class="grp">${list.map(s => svcRow(s, action)).join('')}</div></section>`;
+}).join('');
+
+VIEWS.home = { tab:'home',
+  async render() {
+    const [cats, svcs] = await Promise.all([api.getCategories(), api.getServices()]);
+    return `<div class="hero rise"><h1>Запис у&nbsp;салон<br>за&nbsp;чотири кроки</h1>
+      <p>Оберіть процедуру, майстра та час. Підтвердження й нагадування прийдуть у цей чат.</p>
+      <button class="btn" data-action="book-start"><span>Обрати послугу і час</span></button>
+      <span class="cta-note">Без дзвінків адміністратору</span></div>
+      <nav class="cats rise" aria-label="Категорії">${cats.map(c => `<button class="chip" data-action="jump" data-id="${c.id}">${esc(c.name)}</button>`).join('')}</nav>
+      ${catGroups(cats, svcs, 'pick-svc')}
+      <p class="fine rise">Демо-дані: назви послуг, ціни й тривалість наведені як приклад, це не прайс салону. Ціни вказані «від», остаточну вартість майстер уточнює до початку процедури.</p>`;
+  } };
+
+/* --- Майстри --- */
+const winChips = (list, action, id) => list.length ? list.map(t => `<span class="chip sm">${winLabel(t)}</span>`).join('') : `<span class="small t2">Найближчим часом вільних місць немає</span>`;
+VIEWS.masters = { tab:'masters',
+  async render() {
+    const ms = await api.getMasters();
+    const wins = await Promise.all(ms.map(m => api.getNearestWindows(m.id, null, 3)));
+    return `<h1 class="rise">Наші майстри</h1><p class="lead rise">Оберіть майстра за спеціалізацією й найближчим вільним часом.</p>` +
+      ms.map((m, i) => `<button class="mcard rise" data-action="open-master" data-id="${m.id}">
+        <span class="mhead"><span class="ava" aria-hidden="true">${initials(m.name)}</span>
+        <span><span class="nm">${esc(m.name)}</span><br><span class="small t2">${esc(m.role)}</span><br>
+        <span class="rate">${ico('star')}${m.rating.toFixed(1)}<span class="t2 small">${m.reviews} відгуків</span></span></span></span>
+        <span class="wins" aria-label="Найближчі вільні віконця">${winChips(wins[i])}</span></button>`).join('') +
+      `<p class="fine rise">Демо-дані: імена, рейтинги й відгуки вигадані. Фото майстрів замінюють ініціали-заглушки.</p>`;
+  } };
+VIEWS.master = { tab:'masters', title: () => 'Профіль майстра',
+  async render(sc) {
+    const [m, week] = await Promise.all([api.getMaster(sc.id), api.getWeek(sc.id)]);
+    const svcs = m.services.map(svcOf);
+    return `<div class="mhead prof rise"><span class="ava xl" aria-hidden="true">${initials(m.name)}</span>
+      <span><h1>${esc(m.name)}</h1><span class="small t2">${esc(m.role)}</span><br>
+      <span class="rate">${ico('star')}${m.rating.toFixed(1)}<span class="t2 small">${m.reviews} відгуків, демо</span></span></span></div>` +
+      `<p class="t2 rise">${esc(m.bio)}</p>
+      <section class="rise"><h2 class="cat-h">Послуги</h2><div class="picks">${svcs.map(s => `<span class="chip sm">${esc(s.name)}</span>`).join('')}</div></section>
+      <section class="rise"><h2 class="cat-h">Портфоліо</h2><div class="port">${m.port.map(p => `<div class="tile">${esc(p)}, фото-заглушка</div>`).join('')}</div></section>
+      <section class="rise"><h2 class="cat-h">Вільні віконця</h2><div class="week">${week.map(d => `<div class="day"><div class="dl">${esc(dayWord(d.day))}</div>
+        <div class="wins">${d.off ? '<span class="small t2">Вихідний</span>' : d.starts.length ? d.starts.slice(0, 4).map(t => `<button class="chip sm" data-action="book-master" data-id="${m.id}">${hm(t)}</button>`).join('') + (d.starts.length > 4 ? `<span class="small t2">і ще ${d.starts.length - 4}</span>` : '') : '<span class="small t2">Вільних місць немає</span>'}</div></div>`).join('')}</div>
+        <p class="fine">Орієнтовно для процедури на 60 хв. Точний час залежить від обраної послуги.</p></section>
+      <div class="cta-bar"><div class="cta-in"><button class="btn block" data-action="book-master" data-id="${m.id}"><span>Записатись до цього майстра</span></button></div></div>`;
+  } };
+
+/* --- Запис --- */
+const STEP_NAMES = ['Послуга', 'Майстер', 'Дата й час', 'Підтвердження'];
+const progress = F => `<div class="prog" aria-hidden="true">${STEP_NAMES.map((_, i) => `<i class="${i < F.step ? 'on' : ''}"></i>`).join('')}</div><p class="step-l">Крок ${F.step} з 4: ${STEP_NAMES[F.step - 1]}</p>`;
+const picksBar = F => {
+  const parts = [];
+  if (F.serviceId) parts.push(`<button class="chip sm on" data-action="jump-step" data-step="1">${esc(svcOf(F.serviceId).name)}</button>`);
+  if (F.masterId && F.step > 2) parts.push(`<button class="chip sm on" data-action="jump-step" data-step="2">${F.masterId === 'any' ? 'Будь-який вільний' : esc(masterOf(F.masterId).name)}</button>`);
+  return parts.length ? `<div class="picks">${parts.join('')}</div>` : '';
+};
+async function pickerHtml(P) {
+  const days = await api.getDays(P);
+  const firstFree = days.find(d => d.free > 0);
+  if (!P.date || !days.some(d => d.free > 0 && d.day === P.date)) { P.date = firstFree ? firstFree.day : null; P.start = null; }
+  return `<div class="strip rise" role="group" aria-label="Дата">${days.map(d => { const dt = new Date(d.day);
+      return `<button class="dbtn" data-action="pick-date" data-day="${d.day}" aria-pressed="${d.day === P.date}" ${d.free ? '' : 'disabled'} aria-label="${fullDate(d.day)}${d.free ? '' : ', вільних місць немає'}"><span>${WD[dt.getDay()]}</span><b>${dt.getDate()}</b></button>`; }).join('')}</div>
+    <div id="slots" class="rise" aria-live="polite">${firstFree ? '' : emptyHtml('Вільних місць немає', 'Найближчими двома тижнями немає вільного часу. Спробуйте іншого майстра або послугу.')}</div>`;
+}
+const emptyHtml = (t, p) => `<div class="empty"><h3>${t}</h3><p>${p}</p></div>`;
+async function loadSlots(P) {
+  const box = $('#slots'); if (!box || !P.date) return;
+  box.innerHTML = '<div class="times"><div class="sk"></div><div class="sk"></div><div class="sk"></div></div>';
+  const day = P.date;
+  try {
+    const slots = await api.getSlots(P);
+    if (P.date !== day) return;
+    box.innerHTML = slots.length
+      ? `<div class="times">${slots.map(s => `<button class="chip ${s.start === P.start ? 'on' : ''}" data-action="pick-time" data-start="${s.start}" aria-pressed="${s.start === P.start}">${hm(s.start)}</button>`).join('')}</div>`
+      : emptyHtml('На цей день місць немає', 'Оберіть іншу дату зі смуги вище.');
+  } catch (e) {
+    box.innerHTML = `<div class="banner bad">${ico('alert')}<span>Не вдалося завантажити час. <button class="lnk" data-action="reload-slots">Спробувати ще раз</button></span></div>`;
+  }
+}
+const pickerBar = (P, label, action, note) => `<div class="cta-bar"><div class="cta-in"><div id="barErr"></div><button class="btn block" id="pickCta" data-action="${action}" ${P.start ? '' : 'disabled'}><span>${P.start ? label : 'Оберіть час'}</span></button><span class="cta-note">${note}</span></div></div>`;
+function refreshPickerBar() {
+  const P = S.screen.name === 'resched' ? S.re : S.flow, b = $('#pickCta'); if (!b) return;
+  b.disabled = !P.start;
+  b.firstElementChild.textContent = P.start ? (S.screen.name === 'resched' ? `Перенести на ${hm(P.start)}, ${fullDate(P.start)}` : `Перейти до підтвердження: ${hm(P.start)}`) : 'Оберіть час';
+}
+
+VIEWS.book = { flow:true, title: () => 'Запис',
+  async render() {
+    const F = S.flow, head = progress(F);
+    if (F.step === 1) {
+      const [cats, svcs] = await Promise.all([api.getCategories(), api.getServices()]);
+      let list = svcs;
+      if (F.masterId && F.masterId !== 'any') { const m = masterOf(F.masterId); list = svcs.filter(s => m.services.includes(s.id)); }
+      return `${head}<h1 class="rise">Оберіть процедуру</h1>` + catGroups(cats, list, 'flow-svc');
+    }
+    if (F.step === 2) {
+      const ms = await api.getMasters({ serviceId:F.serviceId });
+      const wins = await Promise.all(['any', ...ms.map(m => m.id)].map(id => api.getNearestWindows(id, F.serviceId, 1)));
+      return `${head}${picksBar(F)}<h1 class="rise">Оберіть майстра</h1>
+        <button class="opt rise" data-action="pick-master" data-id="any"><span class="grow"><span class="ot">Будь-який вільний спеціаліст</span><span class="os">${wins[0].length ? 'Найближчий час: ' + winLabel(wins[0][0]) : 'Найближчим часом вільних місць немає'}</span></span>${ico('chev')}</button>` +
+        ms.map((m, i) => `<button class="opt rise" data-action="pick-master" data-id="${m.id}"><span class="ava" aria-hidden="true">${initials(m.name)}</span><span class="grow"><span class="ot">${esc(m.name)}</span><span class="os">${esc(m.role)} / ${m.rating.toFixed(1)} з 5</span><span class="os">${wins[i + 1].length ? 'Найближчий час: ' + winLabel(wins[i + 1][0]) : 'Найближчим часом вільних місць немає'}</span></span>${ico('chev')}</button>`).join('');
+    }
+    if (F.step === 3) {
+      const s = svcOf(F.serviceId);
+      return `${head}${picksBar(F)}<h1 class="rise">Оберіть дату й час</h1><p class="lead rise">Процедура триває ${s.min} хв.${F.masterId === 'any' ? ' Майстра призначимо автоматично.' : ''}</p>` +
+        await pickerHtml(F) + pickerBar(F, '', 'to-confirm', 'Перенести чи скасувати можна за 24 години до візиту');
+    }
+    /* крок 4 */
+    const s = svcOf(F.serviceId), m = F.masterId === 'any' ? null : masterOf(F.masterId), E = F.errors || {};
+    const dep = s.prepay ? `<div><dt>Передоплата</dt><dd>${money(prepayAmount(s))}<br><span class="small t2">${s.prepay.mode === 'required' ? 'обов’язкова' : 'за бажанням'}, демо-правило</span></dd></div>` : '';
+    return `${head}${picksBar(F)}<h1 class="rise">Перевірте й підтвердіть</h1>
+      <dl class="sum rise"><div><dt>Послуга</dt><dd>${esc(s.name)}</dd></div><div><dt>Майстер</dt><dd>${m ? esc(m.name) : 'Будь-який вільний'}</dd></div>
+      <div><dt>Дата й час</dt><dd>${fullDate(F.start)}, ${hm(F.start)}</dd></div><div><dt>Тривалість</dt><dd>${s.min} хв</dd></div>
+      <div><dt>Вартість</dt><dd>від ${money(s.from)}</dd></div>${dep}</dl>` +
+      `<form id="bf" class="rise" novalidate autocomplete="on">
+        <div class="fld"><label for="f-name">Ваше ім’я</label><input id="f-name" type="text" data-field="name" autocomplete="given-name" value="${esc(F.name)}" aria-invalid="${!!E.name}" aria-describedby="e-name"><p class="err" id="e-name">${esc(E.name || '')}</p></div>
+        <div class="fld"><label for="f-phone">Телефон</label><input id="f-phone" type="tel" inputmode="tel" data-field="phone" autocomplete="tel" placeholder="+380" value="${esc(F.phone)}" aria-invalid="${!!E.phone}" aria-describedby="e-phone"><p class="err" id="e-phone">${esc(E.phone || '')}</p></div>
+        <div><div class="consent"><input id="f-consent" type="checkbox" data-field="consent" ${F.consent ? 'checked' : ''} aria-describedby="e-consent"><label for="f-consent">Погоджуюсь на обробку персональних даних відповідно до <button type="button" class="lnk" data-action="policy">політики конфіденційності</button></label></div><p class="err" id="e-consent">${esc(E.consent || '')}</p></div>
+      </form>
+      <div class="cta-bar"><div class="cta-in"><div id="barErr"></div><button class="btn block" id="confirmBtn" data-action="confirm-booking"><span>Підтвердити запис</span></button><span class="cta-note">Перенести чи скасувати можна за 24 години до візиту</span></div></div>`;
+  },
+  after() { if (S.flow.step === 3) { loadSlots(S.flow); refreshPickerBar(); } } };
+
+VIEWS.pay = { flow:true, title: () => 'Передоплата',
+  async render(sc) {
+    const v = await api.getVisit(sc.id), s = svcOf(v.serviceId), req = v.deposit.mode === 'required';
+    return `<h1 class="rise">Передоплата</h1>
+      <div class="banner rise">${ico('alert')}<span>Це макет екрана. Реального платежу немає, дані картки не збираються й нікуди не передаються.</span></div>
+      <dl class="sum mt20 rise"><div><dt>Послуга</dt><dd>${esc(s.name)}</dd></div><div><dt>Візит</dt><dd>${fullDate(v.start)}, ${hm(v.start)}</dd></div>
+        <div><dt>Передоплата</dt><dd>${money(v.deposit.amount)}</dd></div><div><dt>Спосіб оплати</dt><dd class="t2">платіжна система буде підключена пізніше</dd></div></dl>` +
+      `<p class="small t2 mt16 rise">${req ? 'Для цієї процедури передоплата обов’язкова: без неї запис не буде підтверджено. Залишок сплачується в салоні.' : 'Передоплата за бажанням. Якщо не сплатите зараз, запис залишається, а оплата проходить у салоні.'}</p>` +
+      `<div class="cta-bar"><div class="cta-in"><div id="barErr"></div><button class="btn block" id="payBtn" data-action="pay-now" data-id="${v.id}"><span>Імітувати оплату ${money(v.deposit.amount)}</span></button>
+      ${req ? '' : `<button class="btn-line block mt10" data-action="pay-skip" data-id="${v.id}">Сплачу в салоні</button>`}<span class="cta-note">Реальне списання не відбудеться</span></div></div>`;
+  } };
+
+VIEWS.done = { title: () => 'Запис створено',
+  async render(sc) {
+    const v = await api.getVisit(sc.id), s = svcOf(v.serviceId), m = masterOf(v.masterId), pend = v.status === 'pending_payment';
+    return `<h1 class="rise">${pend ? 'Запис очікує передоплати' : 'Ви записані'}</h1>
+      <dl class="sum rise"><div><dt>Послуга</dt><dd>${esc(s.name)}</dd></div><div><dt>Майстер</dt><dd>${esc(m.name)}</dd></div><div><dt>Дата й час</dt><dd>${fullDate(v.start)}, ${hm(v.start)}</dd></div>
+      <div><dt>Вартість</dt><dd>від ${money(s.from)}</dd></div></dl>` +
+      `<p class="t2 mt20 rise">Нагадаємо про візит за добу та за 2 години у цьому чаті. Перенести чи скасувати запис можна в розділі «Мої візити» не пізніше ніж за 24 години.</p>` +
+      `<p class="small t3 mt8 rise">Демо: запис збережено лише в цьому прототипі, у CRM нічого не передається.</p>
+      <div class="stack rise"><button class="btn" data-action="tab-id" data-id="cabinet"><span>Відкрити мої візити</span></button><button class="btn-line" data-action="book-start">Записатись ще</button></div>`;
+  } };
+
+/* --- Кабінет --- */
+function visitCard(v) {
+  const s = svcOf(v.serviceId), m = masterOf(v.masterId), isUp = v.status !== 'cancelled' && v.start > now();
+  const tag = v.status === 'cancelled' ? 'Скасовано' : v.status === 'pending_payment' ? 'Очікує передоплати' : isUp ? 'Підтверджено' : 'Завершено';
+  let acts = '', note = '';
+  if (isUp) {
+    const ok = api.policy.changeAllowed(v), left = v.start - now();
+    acts = `<button class="btn-line" data-action="resched" data-id="${v.id}" ${ok ? '' : 'disabled'}>Перенести</button><button class="btn-line danger" data-action="cancel-ask" data-id="${v.id}" ${ok ? '' : 'disabled'}>Скасувати</button>`;
+    if (v.status === 'pending_payment') acts += `<button class="btn" data-action="goto-pay" data-id="${v.id}"><span>Сплатити передоплату</span></button>`;
+    note = ok ? `<p class="lock">${ico('cal')}<span>Змінити чи скасувати можна ще ${leftLabel(left - HOURS_LIMIT * 36e5)}</span></p>`
+      : `<p class="lock">${ico('lock')}<span>До візиту ${leftLabel(left)}: перенос і скасування доступні не пізніше ніж за 24&nbsp;години. Для змін зверніться до адміністратора салону.</span></p>`;
+  } else if (v.status !== 'cancelled') acts = `<button class="btn-line" data-action="again" data-id="${v.serviceId}">Повторити запис</button>`;
+  return `<article class="visit rise"><div class="when">${dayWord(v.start)} ${hm(v.start)}<span class="tag">${tag}</span></div>
+    <p class="what">${esc(s.name)}</p><p class="who">${esc(m.name)} / від ${money(s.from)}</p>${note}${acts ? `<div class="acts">${acts}</div>` : ''}</article>`;
+}
+VIEWS.cabinet = { tab:'cabinet',
+  async render() {
+    const [visits, L] = await Promise.all([api.getVisits(), api.getLoyalty()]);
+    const up = visits.filter(v => v.status !== 'cancelled' && v.start > now()).sort((a, b) => a.start - b.start);
+    const past = visits.filter(v => !(v.status !== 'cancelled' && v.start > now())).sort((a, b) => b.start - a.start);
+    const name = host.user(), list = S.cabTab === 'up' ? up : past;
+    return `<h1 class="rise">${name ? 'Привіт, ' + esc(name) : 'Мої візити'}</h1>` +
+      `<section class="loy rise" aria-label="Програма лояльності"><span class="label">Програма лояльності</span><div class="st">${esc(L.status)}</div>
+        <div class="stats"><div><b>${L.bonus}</b><span>бонусів на рахунку</span></div><div><b>${L.discount}%</b><span>персональна знижка</span></div></div>
+        <progress value="${L.visits}" max="${L.goal}" aria-label="Прогрес до статусу ${esc(L.next)}"></progress>
+        <p class="small t2 mt8">Ще ${L.goal - L.visits} візити до статусу «${esc(L.next)}». Демо-правила програми.</p></section>` +
+      `<div class="seg rise" role="tablist"><button role="tab" data-action="cab-seg" data-id="up" aria-selected="${S.cabTab === 'up'}">Майбутні (${up.length})</button><button role="tab" data-action="cab-seg" data-id="past" aria-selected="${S.cabTab === 'past'}">Минулі (${past.length})</button></div>` +
+      (S.cabTab === 'up' ? '<p class="rule rise">Перенести чи скасувати візит можна не пізніше ніж за 24 години до початку.</p>' : '') +
+      (list.length ? list.map(visitCard).join('') : `<div class="empty rise"><h3>${S.cabTab === 'up' ? 'Майбутніх записів немає' : 'Історія порожня'}</h3><p>${S.cabTab === 'up' ? 'Оберіть процедуру й час, запис займе кілька хвилин.' : 'Тут з’являться завершені й скасовані візити.'}</p>${S.cabTab === 'up' ? '<button class="btn" data-action="book-start"><span>Записатись на процедуру</span></button>' : ''}</div>`);
+  } };
+VIEWS.resched = { flow:true, tab:null, title: () => 'Перенесення візиту',
+  async render() {
+    const R = S.re, v = await api.getVisit(R.visitId), s = svcOf(v.serviceId), m = masterOf(v.masterId);
+    return `<h1 class="rise">Новий час візиту</h1><p class="lead rise">${esc(s.name)} / ${esc(m.name)}<br>Зараз: ${fullDate(v.start)}, ${hm(v.start)}</p>` +
+      await pickerHtml(R) + pickerBar(R, '', 'do-resched', 'Попередній час звільниться автоматично');
+  },
+  after() { loadSlots(S.re); refreshPickerBar(); } };
+
+/* --- Сповіщення (статичний макет) --- */
+VIEWS.notify = { tab:'notify',
+  async render() {
+    const B = await api.getBotPreview(), s = B.service, m = B.master;
+    const addr = '[ПОТРІБНО ВІД КЛІЄНТА: адреса салону]';
+    return `<h1 class="rise">Повідомлення бота</h1><p class="lead rise">Макет: так виглядатимуть автоматичні повідомлення в чаті. Реальні сповіщення надсилає бот після підключення до CRM.</p>` +
+      `<div class="chat rise"><div class="chat-h"><span class="ava" aria-hidden="true">Н</span><div><div>Назва салону</div><div class="small t2">бот салону, демо</div></div></div>
+      <div class="msg"><div class="label mh">За 24 години до візиту</div><div class="bub"><p>Нагадуємо: завтра о&nbsp;10:00 у&nbsp;вас запис.</p><p><b>${esc(s.name)}</b><br>Майстер: ${esc(m.name)}<br>Адреса: ${addr}</p><p>Змінити плани можна в застосунку не пізніше ніж за 24 години до візиту.</p></div><div class="kb"><span>Відкрити мої візити</span></div></div>
+      <div class="msg"><div class="label mh">За 2 години до візиту</div><div class="bub"><p>Чекаємо вас сьогодні о&nbsp;10:00.</p><p><b>${esc(s.name)}</b><br>Майстер: ${esc(m.name)}<br>Адреса: ${addr}</p></div><div class="kb"><span>Відкрити мої візити</span></div></div>
+      <div class="msg"><div class="label mh">Після візиту</div><div class="bub"><p>Дякуємо, що завітали! Оцініть роботу майстра ${esc(B.rated.name)}: від 1 до 5.</p><p>Бажаєте поділитися враженнями? Напишіть відгук у відповідь на це повідомлення.</p></div>
+        <div class="kb stars" aria-label="Оцінка від 1 до 5"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></div>
+        <div class="kb"><span>Залишити чайові майстру</span></div>
+        <p class="bub-when">Кнопка веде на сторінку безготівкової оплати чайових через еквайринг. Платіжний сервіс: [ПОТРІБНО ВІД КЛІЄНТА].</p></div></div>
+      <p class="fine rise">Тексти повідомлень і кнопки під ними, це пропозиція для обговорення з клієнтом. Їх можна змінити.</p>`;
+  } };
+
+/* ===== БЛОК: дії ===== */
+const setBusy = (btn, on) => { if (!btn) return; btn.disabled = on; btn.classList.toggle('is-busy', on); };
+const showBarErr = (html) => { const b = $('#barErr'); if (b) b.innerHTML = html ? `<div class="banner bad mb" role="alert">${ico('alert')}<span>${html}</span></div>` : ''; };
+const failMsg = e => e.code === 'SLOT_TAKEN' ? 'Цей час щойно зайняли. Оберіть інший.' : e.code === 'TOO_LATE' ? 'Змінити візит уже не можна: до початку менше 24 годин.' : 'Не вдалося виконати дію: немає зв’язку. Спробуйте ще раз.';
+function startBooking(p = {}) {
+  S.flow = { step:1, min:1, serviceId:p.serviceId || null, masterId:p.masterId || null, date:null, start:null, name:host.user(), phone:'', consent:false, errors:{} };
+  if (p.serviceId) { S.flow.step = 2; S.flow.min = 2; }
+  S.stack = S.screen.name === 'done' ? [] : S.stack;
+  go('book');
+}
+function chooseService(id) {
+  const F = S.flow;
+  if (F.serviceId !== id) { F.serviceId = id; F.date = null; F.start = null; }
+  F.step = (F.masterId && F.masterId !== 'any' && masterOf(F.masterId).services.includes(id)) ? 3 : 2;
+  if (F.step === 2) F.masterId = null;
+  renderScreen();
+}
+async function confirmBooking(btn) {
+  const F = S.flow, E = {}, name = F.name.trim();
+  const d = F.phone.replace(/[^\d+]/g, ''); let ph = d;
+  if (/^0\d{9}$/.test(d)) ph = '+38' + d; else if (/^380\d{9}$/.test(d)) ph = '+' + d;
+  if (name.length < 2) E.name = 'Вкажіть ім’я, щоб майстер знав, як до вас звертатись';
+  if (!/^\+380\d{9}$/.test(ph)) E.phone = 'Вкажіть номер у форматі +380XXXXXXXXX';
+  if (!F.consent) E.consent = 'Без згоди на обробку персональних даних запис неможливий';
+  F.errors = E;
+  for (const k of ['name', 'phone', 'consent']) { $('#e-' + k).textContent = E[k] || ''; const i = $('#f-' + k); if (i) i.setAttribute('aria-invalid', !!E[k]); }
+  if (Object.keys(E).length) { host.haptic('error'); const first = $('#f-' + Object.keys(E)[0]); first && first.focus(); return; }
+  showBarErr(''); setBusy(btn, true);
+  try {
+    const v = await api.createBooking({ serviceId:F.serviceId, masterId:F.masterId, start:F.start, client:{ name, phone:ph } });
+    host.haptic('success'); S.stack = [];
+    if (v.deposit) replace('pay', { id:v.id }); else replace('done', { id:v.id });
+  } catch (e) {
+    host.haptic('error'); setBusy(btn, false);
+    showBarErr(esc(failMsg(e)) + (e.code === 'SLOT_TAKEN' ? ' <button class="lnk" data-action="jump-step" data-step="3">Обрати інший час</button>' : ''));
+  }
+}
+const ACTIONS = {
+  tab: b => switchTab(b.dataset.id),
+  'tab-id': b => switchTab(b.dataset.id),
+  back: () => back(),
+  retry: () => renderScreen(),
+  jump: b => { const el = document.getElementById('cat-' + b.dataset.id); el && el.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion:reduce)').matches ? 'auto' : 'smooth', block:'start' }); },
+  'book-start': () => startBooking(),
+  'pick-svc': b => startBooking({ serviceId:b.dataset.id }),
+  'flow-svc': b => { host.haptic('tap'); chooseService(b.dataset.id); },
+  'book-master': b => startBooking({ masterId:b.dataset.id }),
+  'open-master': b => go('master', { id:b.dataset.id }),
+  again: b => startBooking({ serviceId:b.dataset.id }),
+  'jump-step': b => { const F = S.flow, n = +b.dataset.step; if (n <= 1) { F.serviceId = null; F.masterId = null; } if (n <= 2) F.masterId = null; F.date = null; F.start = null; F.step = n; renderScreen(); },
+  'pick-master': b => { host.haptic('tap'); S.flow.masterId = b.dataset.id; S.flow.date = null; S.flow.start = null; S.flow.step = 3; renderScreen(); },
+  'pick-date': b => { const P = S.screen.name === 'resched' ? S.re : S.flow; P.date = +b.dataset.day; P.start = null; host.haptic('tap');
+    document.querySelectorAll('.dbtn').forEach(x => x.setAttribute('aria-pressed', x === b)); refreshPickerBar(); loadSlots(P); },
+  'pick-time': b => { const P = S.screen.name === 'resched' ? S.re : S.flow; P.start = +b.dataset.start; host.haptic('tap');
+    document.querySelectorAll('#slots .chip').forEach(x => { const on = x === b; x.classList.toggle('on', on); x.setAttribute('aria-pressed', on); }); refreshPickerBar(); },
+  'reload-slots': () => loadSlots(S.screen.name === 'resched' ? S.re : S.flow),
+  'to-confirm': () => { if (S.flow.start) { S.flow.step = 4; renderScreen(); } },
+  'confirm-booking': b => confirmBooking(b),
+  'pay-now': async b => {
+    showBarErr(''); setBusy(b, true);
+    try { const v = await api.payDeposit(b.dataset.id); host.haptic('success'); replace('done', { id:v.id }); }
+    catch (e) { host.haptic('error'); setBusy(b, false); showBarErr('Не вдалося виконати оплату. Спробуйте ще раз.'); }
+  },
+  'pay-skip': b => replace('done', { id:b.dataset.id }),
+  'goto-pay': b => go('pay', { id:b.dataset.id }),
+  'cab-seg': b => { S.cabTab = b.dataset.id; renderScreen({ quiet:true }); },
+  resched: async b => {
+    const v = (await api.getVisit(b.dataset.id)); S.re = { visitId:v.id, masterId:v.masterId, serviceId:v.serviceId, exceptId:v.id, date:null, start:null };
+    go('resched');
+  },
+  'do-resched': async b => {
+    const R = S.re; showBarErr(''); setBusy(b, true);
+    try { await api.rescheduleVisit(R.visitId, { start:R.start }); host.haptic('success'); S.cabTab = 'up'; S.stack = []; S.screen = { name:'cabinet' }; renderScreen(); toast('Візит перенесено на ' + fullDate(R.start) + ', ' + hm(R.start)); }
+    catch (e) { host.haptic('error'); setBusy(b, false); showBarErr(esc(failMsg(e))); }
+  },
+  'cancel-ask': async b => {
+    const v = await api.getVisit(b.dataset.id), s = svcOf(v.serviceId);
+    openSheet(`<h2>Скасувати візит?</h2><p>${esc(s.name)}, ${fullDate(v.start)}, ${hm(v.start)}.</p><p class="t2">Час звільниться для інших клієнтів. Дію не можна скасувати.</p><div id="sheetErr"></div>
+      <div class="row"><button class="btn" id="cancelGo" data-action="cancel-do" data-id="${v.id}"><span>Так, скасувати візит</span></button><button class="btn-line" data-action="sheet-close">Залишити запис</button></div>`);
+  },
+  'cancel-do': async b => {
+    setBusy(b, true); $('#sheetErr').innerHTML = '';
+    try { await api.cancelVisit(b.dataset.id); host.haptic('success'); closeSheet(); renderScreen({ quiet:true }); toast('Візит скасовано'); }
+    catch (e) { host.haptic('error'); setBusy(b, false); $('#sheetErr').innerHTML = `<div class="banner bad" role="alert">${ico('alert')}<span>${esc(failMsg(e))}</span></div>`; }
+  },
+  'sheet-close': () => closeSheet(),
+  policy: () => openSheet(`<h2>Політика конфіденційності</h2><p>[ПОТРІБНО ВІД КЛІЄНТА: текст політики конфіденційності та назва юридичної особи].</p><p class="t2">У прототипі тут заглушка. Збираємо лише ім’я та телефон, потрібні для запису.</p><div class="row"><button class="btn-line" data-action="sheet-close">Закрити</button></div>`),
+  demo: () => openDemo(),
+  clock: b => { const h = +b.dataset.h; DEMO.offset = h === 0 ? 0 : DEMO.offset + h * 36e5; openDemo(); if (S.flow) { S.flow.date = null; S.flow.start = null; } if (S.re) { S.re.date = null; S.re.start = null; } renderScreen(); },
+  theme: b => { S.themePref = b.dataset.id; applyTheme(); openDemo(); },
+  'reset-demo': () => { STORE.visits = SEED_VISITS(); DEMO.offset = 0; DEMO.failNext = false; S.flow = null; S.re = null; S.cabTab = 'up'; closeSheet(); switchTab('home'); toast('Демо-дані скинуто'); }
+};
+function openSheet(html) { $('#sheetBody').innerHTML = html; const d = $('#sheet'); if (!d.open) d.showModal(); }
+function closeSheet() { const d = $('#sheet'); if (d.open) d.close(); }
+function openDemo() {
+  const th = S.themePref;
+  openSheet(`<h2>Демо-режим</h2>
+    <p>Усі назви, ціни, майстри, рейтинги й бонуси в цьому прототипі вигадані для показу. Реальних даних салону та інтеграцій з CRM, платежами й ботом тут немає.</p>
+    <h3 class="grp-t">Умовний «зараз»</h3>
+    <p class="t2">${fullDate(now())} ${new Date(now()).getFullYear()}, ${hm(now())}. Від цього залежить правило 24 годин і вільні слоти.</p>
+    <div class="row"><button class="btn-line" data-action="clock" data-h="1">+1 год</button><button class="btn-line" data-action="clock" data-h="24">+1 день</button><button class="btn-line" data-action="clock" data-h="0">Скинути</button></div>
+    <h3 class="grp-t">Стани інтерфейсу</h3>
+    <label class="tgl"><input type="checkbox" id="failToggle" ${DEMO.failNext ? 'checked' : ''}>Імітувати помилку мережі на наступній дії</label>
+    <h3 class="grp-t">Тема</h3>
+    <div class="row">${[['auto', 'Авто'], ['light', 'Світла'], ['dark', 'Темна']].map(([id, n]) => `<button class="chip ${th === id ? 'on' : ''}" data-action="theme" data-id="${id}">${n}</button>`).join('')}</div>
+    <div class="row"><button class="btn-line" data-action="reset-demo">Скинути всі демо-дані</button><button class="btn" data-action="sheet-close"><span>Закрити</span></button></div>`);
+}
+
+/* ===== БЛОК: події ===== */
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-action]');
+  if (!b || b.disabled) return;
+  const fn = ACTIONS[b.dataset.action]; if (fn) fn(b, e);
+});
+document.addEventListener('input', e => { const f = e.target.dataset && e.target.dataset.field; if (f && S.flow && f !== 'consent') S.flow[f] = e.target.value; });
+document.addEventListener('change', e => {
+  if (e.target.dataset && e.target.dataset.field === 'consent' && S.flow) S.flow.consent = e.target.checked;
+  if (e.target.id === 'failToggle') DEMO.failNext = e.target.checked;
+});
+$('#sheet').addEventListener('click', e => { if (e.target === e.currentTarget) closeSheet(); });
+if (window.matchMedia) matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyTheme);
+
+/* ===== БЛОК: старт ===== */
+host.init();
+applyTheme();
+renderScreen();
+</script>
+</body>
+</html>
